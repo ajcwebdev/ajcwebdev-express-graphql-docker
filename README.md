@@ -1,10 +1,10 @@
-# How to Dockerize and Deploy a GraphQL Server with Fly
+# Example Project from [Deploy a GraphQL Server with Docker and Fly](https://ajcwebdev.com/deploy-a-graphql-server-with-docker-and-fly#heading-deploy-fly-application)
 
 [Express GraphQL](https://github.com/graphql/express-graphql/) is a library for building production ready GraphQL HTTP middleware. Despite the emphasis on Express in the repo name, you can create a GraphQL HTTP server with any HTTP web framework that supports connect styled middleware. This includes [Connect](https://github.com/senchalabs/connect) itself, [Express](https://expressjs.com) and [Restify](http://restify.com/).
 
 [Docker](https://www.docker.com/) is a set of tools that use OS-level virtualization to deliver software in isolated packages called containers. Containers bundle their own software, libraries and configuration files. [Fly](https://fly.io/) is a platform for full stack applications and databases that need to run globally. You can run arbitrary Docker containers and host popular databases like Postgres.
 
-## GraphQL Express Server in `index.js`
+## GraphQL Express Server
 
 `graphqlHTTP` accepts a wide range of options, some of the most common include:
 
@@ -20,35 +20,39 @@ const express = require('express')
 const { graphqlHTTP } = require('express-graphql')
 const { buildSchema } = require('graphql')
 
-const schema = buildSchema(`type Query { hello: String }`)
-const rootValue = { hello: () => 'Hello from Express GraphQL!' }
+const schema = buildSchema(`
+  type Query { hello: String }
+`)
+
+const rootValue = {
+  hello: () => 'Hello from Express GraphQL!'
+}
 
 const app = express()
 
-app.use(
-  '/graphql',
+app.use('/graphql',
   graphqlHTTP({
     schema,
     rootValue,
-    graphiql: {
-      headerEditorEnabled: true
-    },
+    graphiql: { headerEditorEnabled: true },
   }),
 )
 
-app.listen(8080, '0.0.0.0')
+const port = process.env.PORT || 8080
 
-console.log('Running Express GraphQL server at http://localhost:8080/graphql')
+app.listen(port, () => {
+  console.log(`Express GraphQL server running on http://localhost:${port}/graphql`)
+})
 ```
 
-### Run server and execute test query
+### Run Local Server and Execute Test Query
 
 ```bash
-node index.js
+node index
 ```
 
 ```
-Running Express GraphQL server at http://localhost:8080/graphql
+Express GraphQL server running on http://localhost:8080/graphql
 ```
 
 `express-graphql` will accept requests with the parameters:
@@ -64,13 +68,12 @@ query HELLO_QUERY { hello }
 ![01-express-graphql-hello-localhost-8080](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/6tb9ltduj8k6lfiwwwb9.png)
 
 ```bash
-curl --request POST \
-  --url http://localhost:8080/graphql \
+curl 'http://localhost:8080/graphql' \
   --header 'content-type: application/json' \
   --data '{"query":"{ hello }"}'
 ```
 
-## `Dockerfile`
+## Dockerfile
 
 Docker can build images automatically by reading the instructions from a [`Dockerfile`](https://docs.docker.com/engine/reference/builder/). A `Dockerfile` is a text document that contains all the commands a user could call on the command line to assemble an image. Using `docker build` users can create an automated build that executes several command-line instructions in succession.
 
@@ -79,10 +82,10 @@ FROM node:14-alpine
 LABEL org.opencontainers.image.source https://github.com/ajcwebdev/ajcwebdev-express-graphql-docker
 WORKDIR /usr/src/app
 COPY package*.json ./
-RUN npm i
+RUN yarn
 COPY . ./
 EXPOSE 8080
-CMD [ "node", "index.js" ]
+CMD [ "node", "index" ]
 ```
 
 ## Docker Compose
@@ -98,7 +101,7 @@ services:
       - "49160:8080"
 ```
 
-### Create and start containers with `docker compose up`
+### Create and Start Containers with Docker Compose
 
 The `docker compose up` command aggregates the output of each container. It builds, (re)creates, starts, and attaches to containers for a service.
 
@@ -120,15 +123,14 @@ query HELLO_QUERY { hello }
 ![02-localhost-49160-graphql](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/bpim4bg6oi7z09r4w3hw.png)
 
 ```bash
-curl --request POST \
-  --url http://localhost:49160/graphql \
+curl 'http://localhost:49160/graphql' \
   --header 'content-type: application/json' \
   --data '{"query":"{ hello }"}'
 ```
 
 ## Deploy to Fly
 
-### Install and authenticate `flyctl` CLI
+### Install and Authenticate Fly CLI
 
 You can download the CLI on [Mac, Linux, or Windows](https://fly.io/docs/getting-started/installing-flyctl/).
 
@@ -148,14 +150,12 @@ You will also be prompted for credit card payment information, required for char
 flyctl auth login
 ```
 
-### Launch app on Fly with `flyctl launch`
+### Launch App on Fly
 
 Run `flyctl launch` in the directory with your source code to configure your app for deployment. This will create and configure a fly app by inspecting your source code and prompting you to deploy.
 
 ```bash
-flyctl launch \
-  --name ajcwebdev-express-graphql-docker \
-  --region sjc
+fly launch --name ajcwebdev-express-graphql-docker
 ```
 
 This creates a `fly.toml` file.
@@ -180,24 +180,25 @@ processes = []
   protocol = "tcp"
   script_checks = []
 
-[services.concurrency]
-  hard_limit = 25
-  soft_limit = 20
-  type = "connections"
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
 
-[[services.ports]]
-  handlers = ["http"]
-  port = 80
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
 
-[[services.ports]]
-  handlers = ["tls", "http"]
-  port = 443
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
 
-[[services.tcp_checks]]
-  grace_period = "1s"
-  interval = "15s"
-  restart_limit = 6
-  timeout = "2s"
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
 ```
 
 Add the following `PORT` number under `env`.
@@ -207,13 +208,13 @@ Add the following `PORT` number under `env`.
   PORT = 8080
 ```
 
-### Deploy application with `flyctl deploy`
+### Deploy Fly Application
 
 ```bash
 flyctl deploy
 ```
 
-### Show the application's current status with `flyctl status`
+### Show the Application Status
 
 Status includes application details, tasks, most recent deployment details and in which regions it is currently allocated.
 
@@ -230,8 +231,7 @@ query HELLO_QUERY { hello }
 ![03-ajcwebdev-express-graphql-docker-fly-dev-hello](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/e7ab8m96y7j8frtxnwg8.png)
 
 ```bash
-curl --request POST \
-  --url https://ajcwebdev-express-graphql-docker.fly.dev/graphql \
+curl 'https://ajcwebdev-express-graphql-docker.fly.dev/graphql' \
   --header 'content-type: application/json' \
   --data '{"query":"{ hello }"}'
 ```

@@ -2,22 +2,26 @@ const express = require('express')
 const { graphqlHTTP } = require('express-graphql')
 const { buildSchema } = require('graphql')
 
-const schema = buildSchema(`type Query { hello: String }`)
-const rootValue = { hello: () => 'Hello from Express GraphQL!' }
+const schema = buildSchema(`
+  type Query { hello: String }
+`)
+
+const rootValue = {
+  hello: () => 'Hello from Express GraphQL!'
+}
 
 const app = express()
 
-app.use(
-  '/graphql',
+app.use('/graphql',
   graphqlHTTP({
     schema,
     rootValue,
-    graphiql: {
-      headerEditorEnabled: true
-    },
+    graphiql: { headerEditorEnabled: true },
   }),
 )
 
-app.listen(8080, '0.0.0.0')
+const port = process.env.PORT || 8080
 
-console.log('Running Express GraphQL server at http://localhost:8080/graphql')
+app.listen(port, () => {
+  console.log(`Express GraphQL server running on http://localhost:${port}/graphql`)
+})
