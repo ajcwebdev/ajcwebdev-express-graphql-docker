@@ -1,4 +1,4 @@
-# Example Project from [Deploy a GraphQL Server with Docker and Fly](https://ajcwebdev.com/deploy-a-graphql-server-with-docker-and-fly#heading-deploy-fly-application)
+# Example Project from [Deploy a GraphQL Server with Docker and Fly](https://ajcwebdev.com/deploy-a-graphql-server-with-docker-and-fly)
 
 [Express GraphQL](https://github.com/graphql/express-graphql/) is a library for building production ready GraphQL HTTP middleware. Despite the emphasis on Express in the repo name, you can create a GraphQL HTTP server with any HTTP web framework that supports connect styled middleware. This includes [Connect](https://github.com/senchalabs/connect) itself, [Express](https://expressjs.com) and [Restify](http://restify.com/).
 
